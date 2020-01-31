@@ -2,16 +2,105 @@
 
 ## Starting on a new disease
 
-### Dolphin and Hadoop setup on CDSW
+### [CDSW](http://usrhdpcdsw2.rxcorp.com/): Dolphin setup
 
-Please refer to the [Confluence page](https://jiraims.rm.imshealth.com/wiki/display/PE/Running+Dolphin+on+CDSW)
-for instructions on setting up a new project on CDSW. Do note the following:
+1. Create a project on CDSW
+2. Clone the [Dolphin git repository](http://rwes-gitlab01.internal.imsglobal.com/Prototypes/dolphin) in CDSW
 
-- You only need to follow the instructions in the first two sections: "Deploy Dolphin on CDSW" and "From CDSW interface" to create the project. Oher subsections are referred to below.
-- CDSW login details are the same as your IQVIA login details
-- However, Hadoop authentication uses different credentials. The username is provided
-on the [Confluence page](https://jiraims.rm.imshealth.com/wiki/display/PE/Running+Dolphin+on+CDSW). For the password,
-please ask a data scientist or a big data engineer in the team stating that you require the password for the `rwipusr` subtenant.
+    - On CDSW project click on `Open Workbench`
+    - `Start New Session` with Python3 and click `Launch Session`
+    - Open terminal by clicking on `>_Terminal access` and use the `git clone` as explained in [Basic git commands](../developer/git_guide.md)
+
+      ```bash
+      git clone --single-branch --branch release http://rwes-gitlab01.internal.imsglobal.com/Prototypes/dolphin.git
+      ```
+
+3. Navigate to `dolphin` folder by using command:
+
+      ```bash
+      cd ./dolphin/
+      ```
+
+4. At the root of the `dolphin` directory run:
+
+      ```bash
+      ./scripts/cdsw/setup_dolphin.sh
+      ```
+
+    This script will install and/or update `Julia` to the required version as well as all packages that are necessary to run `Dolphin`. It will also check for changes to the source code on the working branch and updated if there are any. If any change is made to the `Julia` or `Dolphin` source code, tests will be run to verify that everything is in working order.
+
+### CDSW Github permissions
+
+IQVIA's firewall policies prevent access to github through terminal. To bypass this limitation set git to use the `git:` instead of `https:` protocol, using the script below:
+
+```bash
+   git config --global url."git://".insteadOf https://
+ ```
+
+### Dolphin dependencies
+
+ To install the Dolphin's Julia environment dependencies to the main Julia environment:
+
+1. Run Julia
+2. Press `]` to enter package manager (`Pkg`)
+3. Run `add CSV` (or any package, to populate the main Julia environment)
+This will add the CSV package to your main Julia environment.
+You should now have a folder `$HOME/.julia/environments/v1.1`.
+This folder should contain two files:
+    - `Project.toml`
+    - `Manifest.toml`
+
+    These are used by the main Julia environment (v1.1). The dolphin repository maintains the list of all dependencies inside its own `Manifest.toml` and `Project.toml`. **You need to instantiate these packages in the main Julia environment**. Steps 4-11 describe how to do this.
+4. Exit Julia (press backspace to exit package manager, then press Ctrl + D)
+5. Copy `Manifest.toml` from dolphin's repo into the main folder to `$HOME/.julia/environments/v1.1`.
+6. Enter edit mode for Dolpin's `Project.toml` file, found inside the Dolphin repo. You should see something like:
+
+    ```bash
+    name = "Dolphin"
+    repo = "http://rwes-gitlab01.internal.imsglobal.com/Prototypes/dolphin"
+    version = "0.1.0"
+
+    [deps]
+    Arrow = "69666777-d1a9-59fb-9406-91d4454c9d45"
+    CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
+    Colors = "5ae59095-9a9b-59fe-a467-6f913c188581"
+    Coverage = "a2441757-f6aa-5fb2-8edb-039e3f45d037"
+    DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
+    Feather = "becb17da-46f6-5d3c-ad1b-1c5fe96bc73c"
+    JSON = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"
+    MLDataUtils = "cc2ba9b6-d476-5e6d-8eaf-a92d5412d41d"
+    OnlineStats = "a15396b6-48d5-5d58-9928-6d29437db91e"
+    ProgressMeter = "92933f4c-e287-5a05-a399-4b506db050ca"
+    PyCall = "438e738f-606a-5dbb-bf0a-cddfbfd45ab0"
+    TOML = "191fdcea-f9f2-43e0-b922-d33f71e2abc3"
+    Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+    UnicodePlots = "b8865327-cd53-5732-bb35-84acbb429228"
+    ```
+
+    Copy all entries under `[deps]`.
+7. Enter edit mode for `$HOME/.julia/environments/v1.1/Project.toml`. You should see something like the following (depending on which package you added in step 2):
+
+    ```bash
+      [deps]
+      CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
+    ```
+
+    Under `[deps]`, paste from clipboard the entries copied from dolphin's `Project.toml` file in step 6.
+8. From the terminal, run Julia and enter package manager (see Step 2)
+
+9. From inside the package manager, run `instantiate`
+10. FInally, Run `status`. You should now see a list of all packages required by dolphin, added in your main Julia environment.
+
+### Hadoop authentication
+
+From CDSW interface,
+
+- go to `Account Settings` by clicking the drop-down menu on your username at the top-right of the screen.
+- Select `Hadoop Authentication` tab
+
+  **Username**: rwipmli@INTERNAL.IMSGLOBAL.COM
+  
+  **Password**: ask a data scientist or a big data engineer in the team
 
 ### Folder structure for a new disease
 
@@ -50,11 +139,13 @@ When ETL inform Data Scientists that the PosNeg and Scoring Cohorts are availabl
 
 where `{DISEASE NAME}` and `{COHORT NAME}` would be supplied by ETL. Alternatively, it is possible to infer the path by exploring `/production/rwi/data/mli/output/disease/` using `hdfs dfs -ls` command from a CDSW terminal. Note that each cohort folder typically contains multiple csv files.
 
-Files on DRML can also be accessed using a graphical interface (HUE): https://usrhdphue.rxcorp.com:8889/hue/accounts/login/?next=/hue/ (user: `rwipusr`, password: to be provided)
+Files on DRML can also be accessed using a graphical interface (HUE): <https://usrhdphue.rxcorp.com:8889/hue/accounts/login/?next=/hue/> (user: `rwipusr`, password: to be provided)
 
 Assuming the folder structure has been created on CDSW and the location of the data has been specified, the files can be copied from HDFS to CDSW using `hdfs dfs -get <source> <target>` command (from a terminal). For example, the following would copy version 2 of HFpEF PosNeg cohort from HDFS to CDSW using the folder structure above:
 
-`hdfs dfs -get /production/rwi/data/mli/output/disease/hfpef/octopus_novartis_generic_hfpef_posneg_v2/*.csv /home/cdsw/data/hfpef/posneg_v2/`
+```bash
+hdfs dfs -get /production/rwi/data/mli/output/disease/hfpef/octopus_novartis_generic_hfpef_posneg_v2/*.csv /home/cdsw/data/hfpef/posneg_v2/
+```
 
 ## Data verification
 
@@ -65,6 +156,12 @@ Once the data is obtained, it is advisable to verify it with the product owners 
 - the number of features that will be ingested by Dolphin,
 - the list of clinical events from which the features were generated.
 
+ETL splits cohorts in smaller files (~2GB each). As general rule, make sure that the number of fetched files matches the source using `hdfs dfs -ls <source>`, e.g.:
+
+```bash
+hdfs dfs -ls /production/rwi/data/mli/output/disease/hfpef/octopus_novartis_generic_hfpef_posneg_v2/
+```
+
 ## Data preparation
 
 The data that is obtained from ETL needs to be preprocessed before it is suitable to be consumed by Dolphin. Currently the following preprocessing is carried out:
@@ -74,6 +171,10 @@ The data that is obtained from ETL needs to be preprocessed before it is suitabl
 "lookback_mnths", "lookback_dt", "back_dt", "frst_rx_clm_dt", "frst_dx_clm_dt",
 "lst_rx_clm_dt",  "lst_dx_clm_dt", "disease_frst_exp_dt","index_dt"
 
+In the above steps, redundant or non-important events as acclaimed by the clinical experts are dropped. Take time to discuss and familiarise yourself with the nature of patient record events. See an example for Parkinson's disease below:
+
+![image](Event_timeline.png)
+
 The Scoring Cohort is typically orders of magnitude larger than the PosNeg cohort and it is not
 necessary to preprocess it before the model is run (but it should be done by the time model training is complete). For this reason we typically preprocess PosNeg and Scoring Cohorts separately.
 
@@ -81,26 +182,49 @@ The sample script for preprocessing can be found [on Pythia](http://rwes-gitlab0
 
 ## Model training
 
-The model is trained using Dolphin (see [Dolphin User Guide](http://rwes-gitlab01.internal.imsglobal.com/Prototypes/dolphin/blob/develop/doc/user/USER_GUIDE.md) for details). This requires two inputs:
+The model is trained using Dolphin (see [Dolphin User Guide](http://rwes-gitlab01.internal.imsglobal.com/Prototypes/dolphin/blob/develop/doc/user/USER_GUIDE.md) for details).
 
-- the preprocessed PosNeg cohort; and
-- a configuration file
+**Dolphin** has two modes of operation, one for model training and the second for visualisation of various model parameters. Latter is also run at the end of the training mode.
 
-Examples of configuration files are available. The following typically need to be customised for a new model:
+### Training with Dolphin requires
 
-- `[project]` should accurately describe the model
-- `[data.data_source_info]` should specify the HDFS path where the PosNeg cohort was obtained and the number of csv files that comprosied the PosNeg data set. The `comment` field should state "HDFS DRML".
-- `[data.directories]` should use the preprocessed PosNeg cohort as an input and specify the output path for the model
-- `[optimiser.max_evals]` varies. If POs need a proof-of-concept model with a quick turnaround `max_evals = 1` can be used. Otherwise, typical values are 25, 40, 50, 75.
-- `[model_params]` is often unchanged but there are two special cases:
-  - `[model_params.num_threads]` should reflect the number of vCPUs used by the CDSW session where the model is run
-  - If `max_evals = 1` then LightGBM parameters should be specified explicitly to avoid Hyperopt making an arbitrary choice. Thus when using example configuration files from previous projects, take care to use those from other projects with `max_evals = 1`.
+1. the preprocessed PosNeg cohort;
+2. a `.toml` configuration file (normally attached to the relevant jira sprint ticket - **see how to cinfigure in the section below**)
+3. A python script: Normally, that would be [`run_julia_pipeline.py`](http://rwes-gitlab01.internal.imsglobal.com/Prototypes/dolphin/blob/develop/run_julia_pipeline.py).  The script passes 1 and 2 as arguments to **Dolphin** and activates _training mode_ with the flag `-c` as follows:
 
-The configuration file to be use can be saved `configs/{DISEASE}/` folder as described above and modified as necessary.
+```bash
+julia --color=yes --project=. "./src/Dolphin.jl" -c {relative/path/to/configuration/file}
+```
+
+### Configuration file
+
+The configuration file should be attached to the relevant jira ticket. The following typically need to be customised for a new model:
+
+| Configuration file parameters |  |
+|------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `[project]` | should accurately describe the model |
+| `[data.data_source_info]` | should specify the HDFS path where the PosNeg cohort was obtained and the number of csv files that comprosied the PosNeg data set. The `comment` field should state "HDFS DRML". |
+| `[data.directories]` | should use the preprocessed PosNeg cohort as an input and specify the output path for the model |
+| `[optimiser.max_evals]` | varies. If POs need a proof-of-concept model with a quick turnaround `max_evals = 1` can be used. Otherwise, typical values are 25, 40, 50, 75. **Check your ticket's instruction on setting this value.** |
+| `[model_params]`: |  |
+| `[model_params.num_threads]` | should reflect the number of vCPUs used by the CDSW session where the model is run |
+| `max_evals` | then LightGBM parameters should be specified explicitly to avoid Hyperopt making an arbitrary choice. Thus when using example configuration files from previous projects, take care to use those from other projects with `max_evals = 1`. **Check your ticket's instruction on setting this value.** |
+
+The configuration file to be used can be saved in `configs/{DISEASE}/` folder as described above and modified as necessary.
+
+### Run training job
+
+To finally train your model,
+
+- Create a Job on CDSW with the `dolphin/run_julia_pipeline.py`
+- In `settings`, choose an Engine Profile where the number of `vCPUs`  reflects the value of `num_threads` in the configuration file
+- In `settings`, click on `Set Environmental Variables` (under GPUs) and add an enviromental variable with `name: CONFIG`  and pass the directory for the configuration file in `value: path/to/config/file` e.g `/home/cdsw/dolphin/examples/example/config.toml`.
+- Run the job
 
 ## Prediction generation
 
 The ETL pass information about diagnosed and predicted patients (by our model) to UI using a `prediction.csv` file. This file contains data about all the diagnosed patients and all the patients from the scoring cohort, predicted as positive by the model The `prediction.csv` is a file that (currently) contains 5 columns:
+
 - `patient_id`
 - `pat_gender`
 - `pat_age`
